@@ -1,14 +1,24 @@
+"""
+This is a simple script to preprocess the data into a static, one-row-per-patient format
+This file should be run before any anaylysis is performed since it creates the dataset
+Created by: Aditya Biswas
+"""
+
+
+
 import numpy as np
 import pandas as pd
 import sys
-path = '/home/aditya/Projects'
+path = '/home/aditya/Projects/'
 sys.path.append(path)
-from helper import Data, save
+from Helper.containers import Data
+from Helper.utilities import save
 import os
 path = '/home/aditya/Projects/ACCORD/Data/Original Data/'
 os.chdir(path)
 
 
+## load every ACCORD file into dictionary with lowercase name as key (converted sas -> csv beforehand)
 dataDict = {}
 contents = os.listdir()
 for file in contents:
@@ -16,9 +26,9 @@ for file in contents:
         dataDict[file[:-4].lower()] = pd.read_csv(file, index_col = 0)
 
 ####################################################################################################################################
-subSet = lambda data: data['Visit'] == 'BLR'
+subSet = lambda data: data['Visit'] == 'BLR'  # returns boolean index for all first patient records
 
-################## create treatment markers
+# treatment markers
 m = len(dataDict['accord_key'])
 actions = np.empty((m, 3))
 actions[:,:] = np.nan
@@ -58,8 +68,7 @@ medVars = dataDict['concomitantmeds'][select].iloc[:,1:]
 select = np.sum(medVars, axis = 0)/len(medVars) > 0.05
 medVars = medVars.loc[:,select]
 
-#################### process outcomes
-temp = dataDict['cvdoutcomes']
+# events and times (only primary outcome and all-mortality for the moment)
 dataDict['cvdoutcomes'].rename({'censor_po': 'event_primary', 'fuyrs_po': 't_primary',
                                 'censor_tm': 'event_death', 'fuyrs_tm': 't_death'}, axis = 1, inplace = True)
 events = 1 - dataDict['cvdoutcomes'][['event_primary', 'event_death']]
@@ -80,15 +89,15 @@ labVars = dataDict['otherlabs'][select].iloc[:,1:]
 
 #########################################################################################################################
 
-
+# combine into single dataframe
 data = pd.concat([demoVars.index.to_frame(), demoVars, hemoVars, lipidVars, labVars, bpVars, medVars, actions, events, times], axis = 1)
 
+# create Data object and pickle
 info = {'x': list(demoVars.columns) + list(hemoVars.columns) + list(lipidVars.columns) + list(bpVars.columns) + list(medVars.columns),
         'id': ['MaskID'],
         'y': list(events.columns),
         'a': list(actions.columns),
         't': list(times.columns)}
-
 split = [0.7, 0, 0.3]
 data = Data(data, info, split)
 save(data, '../accord_day0')

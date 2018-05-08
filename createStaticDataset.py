@@ -7,11 +7,12 @@ Created by: Aditya Biswas
 import os
 import sys
 root = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+#root = os.path.join(os.path.expanduser('~'), 'Projects')       for use when in the interpreter
 sys.path.append(root)
 dataFolder = os.path.join(root, 'ACCORD', 'Data')
 os.chdir(os.path.join(dataFolder, 'Original Data'))
 
-from Helper.containers import DataContainer
+from Helper.containers import Data as DataContainer
 from Helper.utilities import save
 
 import numpy as np
@@ -94,16 +95,19 @@ labVars = dataDict['otherlabs'][select].iloc[:,1:]
 ##############################################################################################
 
 ## combine into single dataframe
+# leaving out medVars for the moement
 data = pd.concat([demoVars.index.to_frame(), demoVars, hemoVars, lipidVars, labVars,
-                  bpVars, medVars, actions, events, times], axis = 1)
+                  bpVars, actions, events, times], axis = 1)
 
 ## create Data object and pickle
 info = {'x': list(demoVars.columns) + list(hemoVars.columns) + list(lipidVars.columns) + \
-                list(bpVars.columns) + list(medVars.columns),
-        'id': ['MaskID'],
+                list(bpVars.columns) + list(actions.columns)[1:], #+ list(medVars.columns),
+        'id': 'MaskID',
         'y': list(events.columns),
-        'a': list(actions.columns),
+        'a': list(actions.columns)[0],
         't': list(times.columns)}
 split = [0.7, 0, 0.3]       # 70% train, 30% test
 data = DataContainer(data, info, split)
-save(data, loc = dataFolder, name = 'accord_day0')
+name = 'accord_day0'
+save(data, loc = dataFolder, name = name)
+print('\nData object pickled to: ', os.path.join(dataFolder, name))
